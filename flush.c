@@ -5,7 +5,14 @@
 #include <sys/wait.h>
 #include <time.h>
 #include <stdbool.h>
+
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+
+
 # define MAX_SIZE 300
+# define MAX_STRING_LEN 10
 
 void set_cwd(char* cwd)
 {
@@ -50,6 +57,13 @@ void split_string(char *str, char *args[])
         ptr = strtok(NULL, delim);
         // ptr == ">"
         // ptr == "<"
+        // if (strcmp(ptr, ">") == 0){
+        //     FILE fp;
+        //     char full_path_to_file[MAX_SIZE];
+        //     strcat(full_path_to_file, cwd);
+        //     strcat(full_path_to_file, args[i+1]);
+
+        // }
         args[counter] = ptr;
         counter++;
     }
@@ -57,9 +71,12 @@ void split_string(char *str, char *args[])
     {
         chdir(args[1]);
     };
+    
     // Maa ende paa null men ser ut til at det skjer uansett
     // args[counter] = NULL;
 }
+
+// void redirect_to_file()
 
 int flush()
 {
@@ -70,17 +87,71 @@ int flush()
     {
         set_cwd(cwd);
         prompt_user(cwd, input);
-        char *args[4];
-        split_string(input, args);
+        char *args[MAX_STRING_LEN];
+        // split_string(input, args);
         int pid = fork();
         
         
         // child
         if (pid == 0){
-            printf("Child: %d \n", pid);
-            execv(args[0], args);
-            exit(0);
+            int counter = 1;
+            char delim[] = " \t";
+            char *ptr = strtok(input, delim);
+            printf("%s \n", ptr);
+            args[0] = ptr;
+            while (ptr != NULL)
+            {
+                
+                ptr = strtok(NULL, delim);
+                printf("%s\n", ptr);
+                // ptr == ">"
+                // ptr == "<"
 
+                // Kjør feks ls > text.txt og ls vil bli sendt inn i text.txt
+                if (strcmp(ptr, ">") == 0){
+                    int fd;
+                    printf("fdsafdsa\n");
+                    char full_path_to_file[MAX_SIZE];
+                    strcat(full_path_to_file, cwd);
+                    ptr = strtok(NULL, delim);
+                    strcat(full_path_to_file, "/");
+                    strcat(full_path_to_file, ptr);
+                    printf("%s\n", full_path_to_file);
+                    // Tatt fra stackoverflow
+                    fd = open(full_path_to_file, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
+                    close(1);
+                    dup2(fd, 1);
+                    // execvp(args[0], args);
+                    break;
+                }
+                if (strcmp(ptr, "<") == 0){
+                    int fd0;
+                    char full_path_to_file[MAX_SIZE];
+                    strcat(full_path_to_file, cwd);
+                    ptr = strtok(NULL, delim);
+                    strcat(full_path_to_file, "/");
+                    strcat(full_path_to_file, ptr);
+                    printf("%s fdsafdsa\n", full_path_to_file);
+                    // Tatt fra stackoverflow
+                    if (fd0 = open(full_path_to_file, O_RDONLY) < 0){
+                        perror("Cannot open file");
+                        exit(0);
+                    }
+                    printf("%d\n", fd0);
+                    close(0);
+                    dup2(fd0, 0);
+                    break;
+                }
+                if (strcmp(args[0], "cd") == 0)
+                {
+                    chdir(args[1]);
+                }
+
+                args[counter] = ptr;
+                counter++;
+            }
+            execvp(args[0], args);
+            exit(0);
         }
 
         // parent waiting for child
