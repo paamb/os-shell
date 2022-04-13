@@ -45,25 +45,58 @@ void prompt_user(char * cwd, char * input)
     }
 }
 
-void split_string(char *str, char *args[])
+void split_string(char *str, char *args[], char *cwd)
 {
     int counter = 1;
     char delim[] = " \t";
     char *ptr = strtok(str, delim);
-    // printf("%s \n", ptr);
     args[0] = ptr;
     while (ptr != NULL)
-    {
+    {  
         ptr = strtok(NULL, delim);
-        // ptr == ">"
-        // ptr == "<"
-        // if (strcmp(ptr, ">") == 0){
-        //     FILE fp;
-        //     char full_path_to_file[MAX_SIZE];
-        //     strcat(full_path_to_file, cwd);
-        //     strcat(full_path_to_file, args[i+1]);
-
-        // }
+        if (ptr !=NULL){
+            if (strcmp(ptr, ">") == 0){
+                printf("hEEfdER\n");
+                int fd;
+                printf("fdsafdsa\n");
+                char absolute_path_to_file[MAX_SIZE];
+                memset(absolute_path_to_file, '\0', sizeof(absolute_path_to_file));
+                // printf("cwd: %s", cwd);
+                strcat(absolute_path_to_file, cwd);
+                ptr = strtok(NULL, delim);
+                strcat(absolute_path_to_file, "/");
+                strcat(absolute_path_to_file, ptr);
+                printf("Dette er den faktisk pathen %s\n", absolute_path_to_file);
+                // Tatt fra stackoverflow
+                if(fd = open(absolute_path_to_file, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR)){
+                    perror("Noe gikk galt kan ikke aapne fil");
+                }
+                printf("daaarlig %d\n", fd);
+                close(0);
+                dup2(fd, 1);
+                // execvp(args[0], args);
+                break;
+            }
+            if (strcmp(ptr, "<") == 0){
+                int fd0;
+                char absolute_path_to_file[MAX_SIZE];
+                memset(absolute_path_to_file, '\0', sizeof(absolute_path_to_file));
+                strcat(absolute_path_to_file, cwd);
+                ptr = strtok(NULL, delim);
+                strcat(absolute_path_to_file,  "/");
+                strcat(absolute_path_to_file, ptr);
+                printf("%s fdsafdsa\n", absolute_path_to_file);
+                // Tatt fra stackoverflow
+                if (fd0 = open(absolute_path_to_file, O_RDONLY) < 0){
+                    perror("Cannot open file");
+                    exit(0);
+                }
+                printf("%d\n", fd0);
+                dup2(fd0, 0);
+                close(0);
+                return;
+            }
+        }
         args[counter] = ptr;
         counter++;
     }
@@ -85,71 +118,81 @@ int flush()
     char* input_pointer_array[3];
     while(1)
     {
+        // set_cwd(cwd);
+        // prompt_user(cwd, input);
+        // char *args[4];
+        // split_string(input, args);
+        
         set_cwd(cwd);
         prompt_user(cwd, input);
         char *args[MAX_STRING_LEN];
-        // split_string(input, args);
+        
         int pid = fork();
         
         
         // child
         if (pid == 0){
-            int counter = 1;
-            char delim[] = " \t";
-            char *ptr = strtok(input, delim);
-            printf("%s \n", ptr);
-            args[0] = ptr;
-            while (ptr != NULL)
-            {
+            split_string(input, args, cwd);
+            // int counter = 1;
+            // char delim[] = " \t";
+            // char *ptr = strtok(input, delim);
+            // args[0] = ptr;
+            // while (ptr != NULL)
+            // {
                 
-                ptr = strtok(NULL, delim);
-                printf("%s\n", ptr);
-                // ptr == ">"
-                // ptr == "<"
+            //     ptr = strtok(NULL, delim);
+            //     // ptr == ">"
+            //     // ptr == "<"
 
-                // Kjør feks ls > text.txt og ls vil bli sendt inn i text.txt
-                if (strcmp(ptr, ">") == 0){
-                    int fd;
-                    printf("fdsafdsa\n");
-                    char full_path_to_file[MAX_SIZE];
-                    strcat(full_path_to_file, cwd);
-                    ptr = strtok(NULL, delim);
-                    strcat(full_path_to_file, "/");
-                    strcat(full_path_to_file, ptr);
-                    printf("%s\n", full_path_to_file);
-                    // Tatt fra stackoverflow
-                    fd = open(full_path_to_file, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
-                    close(1);
-                    dup2(fd, 1);
-                    // execvp(args[0], args);
-                    break;
-                }
-                if (strcmp(ptr, "<") == 0){
-                    int fd0;
-                    char full_path_to_file[MAX_SIZE];
-                    strcat(full_path_to_file, cwd);
-                    ptr = strtok(NULL, delim);
-                    strcat(full_path_to_file, "/");
-                    strcat(full_path_to_file, ptr);
-                    printf("%s fdsafdsa\n", full_path_to_file);
-                    // Tatt fra stackoverflow
-                    if (fd0 = open(full_path_to_file, O_RDONLY) < 0){
-                        perror("Cannot open file");
-                        exit(0);
-                    }
-                    printf("%d\n", fd0);
-                    close(0);
-                    dup2(fd0, 0);
-                    break;
-                }
-                if (strcmp(args[0], "cd") == 0)
-                {
-                    chdir(args[1]);
-                }
+            //     // Kjør feks ls > text.txt og ls vil bli sendt inn i text.txt
+            //     if (strcmp(ptr, ">") == 0){
+            //         int fd;
+            //         printf("fdsafdsa\n");
+            //         char full_path_to_file[MAX_SIZE];
+            //         strcat(full_path_to_file, cwd);
+            //         ptr = strtok(NULL, delim);
+            //         strcat(full_path_to_file, "/");
+            //         strcat(full_path_to_file, ptr);
+            //         printf("%s\n", full_path_to_file);
+            //         // Tatt fra stackoverflow
+            //         fd = open(full_path_to_file, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
+            //         close(1);
+            //         dup2(fd, 1);
+            //         // execvp(args[0], args);
+            //         break;
+            //     }
+            //     if (strcmp(ptr, "<") == 0){
+            //         int fd0;
+            //         char full_path_to_file[MAX_SIZE];
+            //         strcat(full_path_to_file, cwd);
+            //         ptr = strtok(NULL, delim);
+            //         strcat(full_path_to_file, "/");
+            //         strcat(full_path_to_file, ptr);
+            //         printf("%s fdsafdsa\n", full_path_to_file);
+            //         // Tatt fra stackoverflow
+            //         if (fd0 = open(full_path_to_file, O_RDONLY) < 0){
+            //             perror("Cannot open file");
+            //             exit(0);
+            //         }
+            //         printf("%d\n", fd0);
+            //         close(0);
+            //         dup2(fd0, 0);
+            //         break;
+            //     }
+            //     if (strcmp(args[0], "cd") == 0)
+            //     {
+            //         chdir(args[1]);
+            //     }
 
-                args[counter] = ptr;
-                counter++;
-            }
+            //     args[counter] = ptr;
+            //     counter++;
+
+            // }
+            // for (int i = 0; i < MAX_STRING_LEN; i++){
+            //         printf("%s\n", args[i]);
+            //     }
+            // printf("haiehihfe\n");
+            printf("hei printes\n");
             execvp(args[0], args);
             exit(0);
         }
