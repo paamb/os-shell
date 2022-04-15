@@ -49,23 +49,29 @@ void redirection(char *args[], char *cwd){
     int fd;
     int i = 0;
     int redirect = 0;
+    int command_ends = 0;
     char absolute_path_to_file[MAX_SIZE];
-    memset(absolute_path_to_file, '\0', sizeof(absolute_path_to_file));
+    
     while (args[i] != NULL){
+        memset(absolute_path_to_file, '\0', sizeof(absolute_path_to_file));
         if (strcmp(args[i],">") == 0 || strcmp(args[i],"<") == 0){
             strcat(absolute_path_to_file, cwd);
             strcat(absolute_path_to_file, "/");
             strcat(absolute_path_to_file, args[i+1]);
             redirect = 1;
+            if (command_ends == 0){
+                command_ends = i;
+            } 
             if (strcmp(args[i], ">") == 0){
                 fd = open(absolute_path_to_file, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
                 if(fd < 0){
                     perror("Noe gikk galt kan ikke aapne fil");
                 }
                 printf("%d\n", fd);
+
+                // fd er naa output
                 dup2(fd, 1);
                 close(fd);
-                break;
             }
             if (strcmp(args[i], "<") == 0){
                 // Tatt fra stackoverflow
@@ -76,14 +82,13 @@ void redirection(char *args[], char *cwd){
                 }
                 dup2(fd, 0);
                 close(fd);
-                break;
             }
         }
         i++;
     }
     //Slicer slik at man faar inn riktig argumenter i execvp
     if (redirect){
-        for (int j = i; j < MAX_STRING_LEN; j++){
+        for (int j = command_ends; j < MAX_STRING_LEN; j++){
             args[j] = '\0';
         }
     }
@@ -132,6 +137,7 @@ int flush()
         if (pid == 0){
             redirection(args, cwd);
             execvp(args[0], args);
+            // Man kommer bare hit om execvp failer
             exit(0);
         }
 
