@@ -56,9 +56,7 @@ void split_string(char *str, char *args[], char *cwd)
         ptr = strtok(NULL, delim);
         if (ptr !=NULL){
             if (strcmp(ptr, ">") == 0){
-                printf("hEEfdER\n");
                 int fd;
-                printf("fdsafdsa\n");
                 char absolute_path_to_file[MAX_SIZE];
                 memset(absolute_path_to_file, '\0', sizeof(absolute_path_to_file));
                 // printf("cwd: %s", cwd);
@@ -66,15 +64,12 @@ void split_string(char *str, char *args[], char *cwd)
                 ptr = strtok(NULL, delim);
                 strcat(absolute_path_to_file, "/");
                 strcat(absolute_path_to_file, ptr);
-                printf("Dette er den faktisk pathen %s\n", absolute_path_to_file);
                 // Tatt fra stackoverflow
                 if(fd = open(absolute_path_to_file, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR)){
                     perror("Noe gikk galt kan ikke aapne fil");
                 }
-                printf("daaarlig %d\n", fd);
                 close(0);
                 dup2(fd, 1);
-                // execvp(args[0], args);
                 break;
             }
             if (strcmp(ptr, "<") == 0){
@@ -85,13 +80,11 @@ void split_string(char *str, char *args[], char *cwd)
                 ptr = strtok(NULL, delim);
                 strcat(absolute_path_to_file,  "/");
                 strcat(absolute_path_to_file, ptr);
-                printf("%s fdsafdsa\n", absolute_path_to_file);
                 // Tatt fra stackoverflow
                 if (fd0 = open(absolute_path_to_file, O_RDONLY) < 0){
                     perror("Cannot open file");
                     exit(0);
                 }
-                printf("%d\n", fd0);
                 dup2(fd0, 0);
                 close(0);
                 return;
@@ -122,17 +115,15 @@ int flush()
         // prompt_user(cwd, input);
         // char *args[4];
         // split_string(input, args);
-        
         set_cwd(cwd);
         prompt_user(cwd, input);
         char *args[MAX_STRING_LEN];
-        
+        split_string(input, args, cwd);
         int pid = fork();
         
         
         // child
         if (pid == 0){
-            split_string(input, args, cwd);
             // int counter = 1;
             // char delim[] = " \t";
             // char *ptr = strtok(input, delim);
