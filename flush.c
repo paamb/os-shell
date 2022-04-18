@@ -27,30 +27,72 @@ void push_process(struct Background_p **head_process, pid_t pid)
     // Peker på NULL ved start
     process->next_process = *head_process;
     // Head blir nå
-    head_process = process;
+    *head_process = process;
 }
 
-remove_process(struct Background_p **head_process, pid_t remove_pid)
+void print_status(int status)
 {
+    printf("Parent: %d \n", getpid());
+    if (WIFEXITED(status))
+    {
+        int exit_status = WEXITSTATUS(status);
+        printf("Exit status = %d \n", exit_status);
+    }
+}
+
+void wait_for_background_processes(struct Background_p **head_process)
+{
+    int status;
     struct Background_p *curr_process = *head_process;
     struct Background_p *prev_process;
-    if (head_process != NULL && (*head_process)->pid == remove_pid)
+
+    //     if (waitpid(curr_process->pid, &status, WNOHANG) != 0)
+    //     {
+    //         if (WIFEXITED(status))
+    //         {
+    //             int exit_status = WEXITSTATUS(status);
+    //             printf("Exit status = %d \n", exit_status);
+    //         }
+    // int iiid = curr_process->pid;
+    // printf("head process %d \n", iiid);
+    // if (*head_process == NULL)
+    // {
+    //     printf("hefdsi\n");
+    // }
+    // (waitpid((*head_process)->pid, &status, WNOHANG) != 0)
+    if (curr_process != NULL)
     {
-        curr_process = curr_process->next_process;
-        free(head_process);
-        return;
+        // int a = waitpid((*head_process)->pid, &status, WNOHANG);
+        if (waitpid(curr_process->pid, &status, WNOHANG) != 0)
+        {
+            printf("kommer inn her \n");
+            *head_process = curr_process->next_process;
+            print_status(status);
+            free(curr_process);
+        }
+        // print_status(status);
     }
-    while (curr_process != NULL && curr_process->pid != remove_pid)
+    //  && curr_process->pid != remove_pid
+    while (curr_process != NULL)
     {
-        prev_process = curr_process;
-        curr_process = curr_process->next_process;
+        if (waitpid(curr_process->pid, &status, WNOHANG) != 0)
+        {
+            prev_process->next_process = curr_process->next_process;
+            print_status(status);
+            free(curr_process);
+        }
+        else
+        {
+            prev_process = curr_process;
+            curr_process = curr_process->next_process;
+        }
     }
-    if (curr_process == NULL)
-    {
-        return;
-    }
-    prev_process->next_process = curr_process->next_process;
-    free(curr_process);
+    // if (curr_process == NULL)
+    // {
+    //     return;
+    // }
+    // prev_process->next_process = curr_process->next_process;
+    // free(curr_process);
 }
 
 void set_cwd(char *cwd)
@@ -162,6 +204,15 @@ int is_background_process(char *args[])
     return 0;
 }
 
+void print_processes(struct Background_p *process)
+{
+    while (process != NULL)
+    {
+        printf("%d", process->pid);
+        process = process->next_process;
+    }
+}
+
 void split_string(char *str, char *args[], char *cwd)
 {
 
@@ -202,7 +253,6 @@ int flush()
 
     // Initializing linked list
     struct Background_p *head = NULL;
-    struct Background_p *curr_process = head;
 
     while (1)
     {
@@ -212,8 +262,10 @@ int flush()
         char *args[MAX_STRING_LEN];
         split_string(input, args, cwd);
         background_process = is_background_process(args);
-        printf("hei\n");
-        printf("%d\n", background_process);
+        // printf("hei\n");
+        // printf("%d\n", background_process);
+
+        print_processes(head);
         int pid = fork();
 
         // child
@@ -221,10 +273,12 @@ int flush()
         {
             if (background_process)
             {
-                push_process(head, getpid());
+                push_process(&head, getpid());
+                sleep(10);
             }
             redirection(args, cwd);
             execvp(args[0], args);
+
             // Man kommer bare hit om execvp failer
             exit(0);
         }
@@ -232,33 +286,29 @@ int flush()
         // parent waiting for child
         else
         {
-
+            // TODO: Fix head
             if (!background_process)
             {
                 waitpid(pid, &status, 0);
-            }
-            printf("Parent: %d \n", pid);
-            if (WIFEXITED(status))
-            {
-                int exit_status = WEXITSTATUS(status);
-                printf("Exit status = %d \n", exit_status);
+                print_status(status);
             }
         }
-        while (curr_process != NULL)
-        {
-            if (waitpid(curr_process->pid, &status, WNOHANG) != 0)
-            {
-                if (WIFEXITED(status))
-                {
-                    int exit_status = WEXITSTATUS(status);
-                    printf("Exit status = %d \n", exit_status);
-                }
-                remove_process(head, pid);
-            }
-            if (curr_process != NULL)
-            {
-                curr_process = curr_process->next_process;
-            }
-        }
+        wait_for_background_processes(&head);
+        // while (head != NULL)
+        // {
+        //     if (waitpid(curr_process->pid, &status, WNOHANG) != 0)
+        //     {
+        //         if (WIFEXITED(status))
+        //         {
+        //             int exit_status = WEXITSTATUS(status);
+        //             printf("Exit status = %d \n", exit_status);
+        //         }
+        //         remove_process(&head, pid);
+        //     }
+        //     if (curr_process != NULL)
+        //     {
+        //         curr_process = curr_process->next_process;
+        //     }
+        // }
     }
 }
