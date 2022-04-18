@@ -14,6 +14,10 @@
 # define MAX_SIZE 300
 # define MAX_STRING_LEN 10
 
+struct Background_p {
+    int pid;
+    struct Background_p* next;    
+};
 void set_cwd(char* cwd)
 {
     char cwd_array[200];
@@ -94,6 +98,15 @@ void redirection(char *args[], char *cwd){
     }
 }
 
+int is_background_process(char *args[]){
+    for (int i = 0; i < MAX_STRING_LEN; i++){
+        if (strcmp(args[i], "&") == 0 && args[i+1] == NULL){
+            args[i] = '\0';
+            return 1;
+        } 
+    }
+    return 0;
+}
 
 void split_string(char *str, char *args[], char *cwd)
 {
@@ -114,6 +127,13 @@ void split_string(char *str, char *args[], char *cwd)
         chdir(args[1]);
     };
     
+    // for (int i = 0; i < MAX_STRING_LEN; i++){
+    //     printf("Lines: %s\n", args[i]);
+    //     if (args[i] == 0){
+    //         break;
+    //     }
+    //     // if (strcmp(args[i], "&") == 0 && strcmp(args[i+1]) == '\0') 
+    // }
     // Maa ende paa null men ser ut til at det skjer uansett
     // args[counter] = NULL;
 }
@@ -124,17 +144,28 @@ int flush()
     char* cwd = malloc(MAX_SIZE);
     char* input = malloc(MAX_SIZE);
     char* input_pointer_array[3];
+    int background_process = 0;
+
+    // Initializing linked list
+    struct Background_p* head = NULL;
+    
     while(1)
     {
+        background_process = 0;
         set_cwd(cwd);
         prompt_user(cwd, input);
         char *args[MAX_STRING_LEN];
         split_string(input, args, cwd);
+        background_process = is_background_process(args);
+        printf("%d\n", background_process);
         int pid = fork();
         
         
         // child
         if (pid == 0){
+            if (background_process){
+                
+            }
             redirection(args, cwd);
             execvp(args[0], args);
             // Man kommer bare hit om execvp failer
