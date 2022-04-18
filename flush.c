@@ -15,9 +15,16 @@
 
 struct Background_p
 {
-    int pid;
+    pid_t b_pid;
     struct Background_p *next;
 };
+
+void push_process(struct Background_p **head, pid_t pid)
+{
+    struct Background_p *process = (struct Background_p *)malloc(sizeof(struct Background_p));
+    process->b_pid = pid;
+}
+
 void set_cwd(char *cwd)
 {
     char cwd_array[200];
@@ -185,7 +192,7 @@ int flush()
         {
             if (background_process)
             {
-                wait_option = WNOHANG;
+                push_process(head, getpid());
             }
             redirection(args, cwd);
             execvp(args[0], args);
@@ -197,7 +204,10 @@ int flush()
         else
         {
             int status;
-            waitpid(pid, &status, wait_option);
+            if (!background_process)
+            {
+                waitpid(pid, &status, 0);
+            }
             printf("Parent: %d \n", pid);
             if (WIFEXITED(status))
             {
