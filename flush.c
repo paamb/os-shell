@@ -15,14 +15,42 @@
 
 struct Background_p
 {
-    pid_t b_pid;
-    struct Background_p *next;
+    pid_t pid;
+    struct Background_p *next_process;
 };
 
-void push_process(struct Background_p **head, pid_t pid)
+void push_process(struct Background_p **head_process, pid_t pid)
 {
+    // Bygger opp foran og går bakover
     struct Background_p *process = (struct Background_p *)malloc(sizeof(struct Background_p));
-    process->b_pid = pid;
+    process->pid = pid;
+    // Peker på NULL ved start
+    process->next_process = *head_process;
+    // Head blir nå
+    head_process = process;
+}
+
+remove_process(struct Background_p **head_process, pid_t remove_pid)
+{
+    struct Background_p *curr_process = *head_process;
+    struct Background_p *prev_process;
+    if (head_process != NULL && (*head_process)->pid == remove_pid)
+    {
+        curr_process = curr_process->next_process;
+        free(head_process);
+        return;
+    }
+    while (curr_process != NULL && curr_process->pid != remove_pid)
+    {
+        prev_process = curr_process;
+        curr_process = curr_process->next_process;
+    }
+    if (curr_process == NULL)
+    {
+        return;
+    }
+    prev_process->next_process = curr_process->next_process;
+    free(curr_process);
 }
 
 void set_cwd(char *cwd)
@@ -170,10 +198,11 @@ int flush()
     char *input = malloc(MAX_SIZE);
     char *input_pointer_array[3];
     int background_process = 0;
-    int wait_option = 0;
+    int status;
 
     // Initializing linked list
     struct Background_p *head = NULL;
+    struct Background_p *curr_process = head;
 
     while (1)
     {
@@ -203,7 +232,7 @@ int flush()
         // parent waiting for child
         else
         {
-            int status;
+
             if (!background_process)
             {
                 waitpid(pid, &status, 0);
@@ -213,6 +242,22 @@ int flush()
             {
                 int exit_status = WEXITSTATUS(status);
                 printf("Exit status = %d \n", exit_status);
+            }
+        }
+        while (curr_process != NULL)
+        {
+            if (waitpid(curr_process->pid, &status, WNOHANG) != 0)
+            {
+                if (WIFEXITED(status))
+                {
+                    int exit_status = WEXITSTATUS(status);
+                    printf("Exit status = %d \n", exit_status);
+                }
+                remove_process(head, pid);
+            }
+            if (curr_process != NULL)
+            {
+                curr_process = curr_process->next_process;
             }
         }
     }
