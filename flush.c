@@ -25,9 +25,18 @@ void push_process(struct Background_p **head_process, pid_t pid)
     struct Background_p *process = (struct Background_p *)malloc(sizeof(struct Background_p));
     process->pid = pid;
     // Peker på NULL ved start
-    process->next_process = *head_process;
+    process->next_process = (*head_process);
     // Head blir nå
-    *head_process = process;
+    (*head_process) = process;
+    // printf("%d\n", (*head_process)->pid);
+    // if ((*head_process)->next_process == NULL)
+    // {
+    //     // printf("Neste er null\n");
+    // }
+    // if (process->next_process != NULL)
+    // {
+    //     printf("Nesteeee: %d\n", process->pid);
+    // }
 }
 
 void print_status(int status)
@@ -65,26 +74,28 @@ void wait_for_background_processes(struct Background_p **head_process)
         // int a = waitpid((*head_process)->pid, &status, WNOHANG);
         if (waitpid(curr_process->pid, &status, WNOHANG) != 0)
         {
-            printf("kommer inn her \n");
             *head_process = curr_process->next_process;
             print_status(status);
+            printf("Prosess som er ferdig %d\n", curr_process->pid);
             free(curr_process);
         }
         // print_status(status);
     }
     //  && curr_process->pid != remove_pid
-    while (curr_process != NULL)
+    while (curr_process != NULL && curr_process->pid != 0)
     {
         if (waitpid(curr_process->pid, &status, WNOHANG) != 0)
         {
             prev_process->next_process = curr_process->next_process;
             print_status(status);
+            printf("Prosess som er ferdig2 %d\n", curr_process->pid);
             free(curr_process);
         }
         else
         {
             prev_process = curr_process;
             curr_process = curr_process->next_process;
+            // printf("%d\n", curr_process->);
         }
     }
     // if (curr_process == NULL)
@@ -208,7 +219,11 @@ void print_processes(struct Background_p *process)
 {
     while (process != NULL)
     {
-        printf("%d", process->pid);
+        printf("%d\n", process->pid);
+        // if (process->next_process != NULL)
+        // {
+        //     printf("%d\n", process->next_process->pid);
+        // }
         process = process->next_process;
     }
 }
@@ -264,21 +279,20 @@ int flush()
         background_process = is_background_process(args);
         // printf("hei\n");
         // printf("%d\n", background_process);
+        // if (head->pid != 0)
+        // {
 
+        //     printf("fdsfds %d\n", head->pid);
+        // }
         print_processes(head);
         int pid = fork();
 
         // child
         if (pid == 0)
         {
-            if (background_process)
-            {
-                push_process(&head, getpid());
-                sleep(10);
-            }
+            sleep(2);
             redirection(args, cwd);
             execvp(args[0], args);
-
             // Man kommer bare hit om execvp failer
             exit(0);
         }
@@ -292,8 +306,13 @@ int flush()
                 waitpid(pid, &status, 0);
                 print_status(status);
             }
+            else
+            {
+                push_process(&head, pid);
+                printf("execes\n");
+                wait_for_background_processes(&head);
+            }
         }
-        wait_for_background_processes(&head);
         // while (head != NULL)
         // {
         //     if (waitpid(curr_process->pid, &status, WNOHANG) != 0)
