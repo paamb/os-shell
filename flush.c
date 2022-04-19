@@ -17,15 +17,31 @@ struct Background_p
 {
     pid_t pid;
     struct Background_p *next_process;
+    char *arguments;
 };
 
-void push_process(struct Background_p **head_process, pid_t pid)
+void push_process(struct Background_p **head_process, pid_t pid, char *command)
 {
+    // printf("%s\n", input);
+    char *arguments = malloc(MAX_SIZE);
+    strcpy(arguments, command);
+    // *arguments = *input;
     // Bygger opp foran og går bakover
     struct Background_p *process = (struct Background_p *)malloc(sizeof(struct Background_p));
+
     process->pid = pid;
+    process->arguments = arguments;
     // Peker på NULL ved start
     process->next_process = (*head_process);
+
+    // for (int i = 0; i < MAX_STRING_LEN; i++)
+    // {
+    //     if (args[i] == NULL)
+    //     {
+    //         break;
+    //     }
+    //     process->args[i] = *args[i];
+    // }
     // Head blir nå
     (*head_process) = process;
 }
@@ -36,7 +52,8 @@ void print_status(int status, int background_p)
     if (WIFEXITED(status))
     {
         int exit_status = WEXITSTATUS(status);
-        if (background_p){
+        if (background_p)
+        {
             printf("Background Process: ");
         }
         printf("Exit status = %d \n", exit_status);
@@ -49,27 +66,32 @@ void wait_for_background_processes(struct Background_p **head_process)
     struct Background_p *curr_process = *head_process;
     struct Background_p *prev_process;
 
-    while(curr_process != NULL && curr_process->pid > 0){
-        if (waitpid(curr_process->pid, &status, WNOHANG) != 0){
-            if (curr_process == *head_process){
+    while (curr_process != NULL && curr_process->pid > 0)
+    {
+        if (waitpid(curr_process->pid, &status, WNOHANG) != 0)
+        {
+            if (curr_process == *head_process)
+            {
                 *head_process = curr_process->next_process;
                 printf("FREE: %d\n", curr_process->pid);
                 print_status(status, 1);
                 free(curr_process);
                 curr_process = *head_process;
             }
-            else{
+            else
+            {
                 printf("Kommer vi hit? \n");
-                prev_process->next_process = curr_process-> next_process;
+                prev_process->next_process = curr_process->next_process;
                 printf("FREE: %d\n", curr_process->pid);
                 free(curr_process);
             }
         }
-        else{
+        else
+        {
             prev_process = curr_process;
             curr_process = curr_process->next_process;
         }
-    } 
+    }
 }
 
 void set_cwd(char *cwd)
@@ -187,7 +209,9 @@ void print_processes(struct Background_p *process)
 
     while (process != NULL)
     {
-        printf("PID: %d\n", process->pid);
+        printf("PID: %d, Command: [", process->pid);
+        printf("%s", process->arguments);
+        printf("]\n");
         process = process->next_process;
     }
     printf("\n\n");
@@ -217,6 +241,7 @@ int flush()
 {
     char *cwd = malloc(MAX_SIZE);
     char *input = malloc(MAX_SIZE);
+    char *command = malloc(MAX_SIZE);
     char *input_pointer_array[3];
     int background_process = 0;
     int status;
@@ -229,9 +254,11 @@ int flush()
         background_process = 0;
         set_cwd(cwd);
         prompt_user(cwd, input);
+        strcpy(command, input);
         char *args[MAX_STRING_LEN];
         split_string(input, args, cwd);
         background_process = is_background_process(args);
+        // printf("I flush: %s\n", input);
 
         int pid = fork();
 
@@ -239,15 +266,15 @@ int flush()
         if (pid == 0)
         {
             // dup2(p[1], 1);
-            if (strcmp(args[0], "jobs") == 0){
+            if (strcmp(args[0], "jobs") == 0)
+            {
                 print_processes(head);
             }
-            // sleep(10);
+            // sleep(4);
             redirection(args, cwd);
             execvp(args[0], args);
             // Man kommer bare hit om execvp failer
             exit(0);
-
         }
 
         // parent waiting for child
@@ -261,7 +288,7 @@ int flush()
             }
             else
             {
-                push_process(&head, pid);
+                push_process(&head, pid, command);
             }
         }
         wait_for_background_processes(&head);
