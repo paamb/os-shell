@@ -133,7 +133,8 @@ void redirection(char *args[], char *cwd)
             if (strcmp(args[i], ">") == 0)
             {
                 // | S_IWUSR
-                fd = open(absolute_path_to_file, O_RDWR | O_CREAT, S_IRUSR);
+                // O_RDWR | O_CREAT, S_IRUSR
+                fd = open(absolute_path_to_file, O_WRONLY | O_TRUNC | O_CREAT, S_IRUSR);
                 if (fd < 0)
                 {
                     perror("Noe gikk galt kan ikke aapne fil");
@@ -253,7 +254,6 @@ int flush()
             {
                 print_processes(head);
             }
-            sleep(4);
             redirection(args, cwd);
             execvp(args[0], args);
             // Man kommer bare hit om execvp failer
