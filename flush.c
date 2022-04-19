@@ -58,32 +58,53 @@ void wait_for_background_processes(struct Background_p **head_process)
     struct Background_p *curr_process = *head_process;
     struct Background_p *prev_process;
 
-    if (curr_process != NULL && curr_process->pid > 0)
-    {
-        if (waitpid(curr_process->pid, &status, WNOHANG) != 0)
-        {
-            *head_process = curr_process->next_process;
-            print_status(status, 1);
-            printf("FREE: %d\n", curr_process->pid);
-            free(curr_process);
+    while(curr_process != NULL && curr_process->pid > 0){
+        if (waitpid(curr_process->pid, &status, WNOHANG) != 0){
+            if (curr_process == *head_process){
+                *head_process = curr_process->next_process;
+                print_status(status, 1);
+                printf("FREE: %d\n", curr_process->pid);
+                free(curr_process);
+                curr_process = *head_process;
+            }
+            else{
+                prev_process->next_process = curr_process-> next_process;
+                printf("FREE: %d\n", curr_process->pid);
+                free(curr_process);
+            }
         }
-    }
-    while (curr_process != NULL && curr_process->pid > 0)
-    {
-        if (waitpid(curr_process->pid, &status, WNOHANG) != 0)
-        {
-            *head_process = curr_process->next_process;
-            prev_process->next_process = curr_process->next_process;
-            print_status(status,1);
-            printf("FREE: %d\n", curr_process->pid);
-            free(curr_process);
-        }
-        else
-        {
+        else{
             prev_process = curr_process;
             curr_process = curr_process->next_process;
         }
-    }
+    } 
+    // if (curr_process != NULL && curr_process->pid > 0)
+    // {
+    //     if (waitpid(curr_process->pid, &status, WNOHANG) != 0)
+    //     {
+    //         *head_process = curr_process->next_process;
+    //         print_status(status, 1);
+    //         printf("FREE: %d\n", curr_process->pid);
+    //         free(curr_process);
+    //     }
+    // }
+    // while (curr_process != NULL && curr_process->pid > 0)
+    // {
+    //     printf("PID 2: %d\n", curr_process->pid);
+    //     if (waitpid(curr_process->pid, &status, WNOHANG) != 0)
+    //     {
+    //         prev_process->next_process = curr_process->next_process;
+    //         print_status(status,1);
+    //         printf("FREE 2: %d\n", curr_process->pid);
+    //         free(curr_process);
+    //         *head_process = curr_process->next_process;
+    //     }
+    //     else
+    //     {
+    //         prev_process = curr_process;
+    //         curr_process = curr_process->next_process;
+    //     }
+    // }
 }
 
 void set_cwd(char *cwd)
@@ -198,7 +219,7 @@ void print_processes(struct Background_p *process)
 {
     while (process != NULL)
     {
-        printf("%d\n", process->pid);
+        printf("Running process: %d\n", process->pid);
         process = process->next_process;
     }
 }
@@ -259,7 +280,6 @@ int flush()
 
         //     printf("fdsfds %d\n", head->pid);
         // }
-        print_processes(head);
         int pid = fork();
 
         // child
@@ -278,6 +298,7 @@ int flush()
             // TODO: Fix head
             if (!background_process)
             {
+                printf("Ikke background\n");
                 waitpid(pid, &status, 0);
                 print_status(status, 0);
             }
@@ -287,6 +308,7 @@ int flush()
                 printf("execes\n");
             }
         }
+        print_processes(head);
         wait_for_background_processes(&head);
         // while (head != NULL)
         // {
