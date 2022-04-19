@@ -11,26 +11,26 @@
 #include <fcntl.h>
 
 #define MAX_SIZE 300
-#define MAX_STRING_LEN 10
+#define MAX_ARGS 10
 
 struct Background_p
 {
     pid_t pid;
     struct Background_p *next_process;
-    char *arguments;
+    char *command;
 };
 
 void push_process(struct Background_p **head_process, pid_t pid, char *command)
 {
-    char *arguments = malloc(MAX_SIZE);
-    strcpy(arguments, command);
+    char *command_copy = malloc(MAX_SIZE);
+    strcpy(command_copy, command);
 
     // Mallocing the process
     struct Background_p *process = (struct Background_p *)malloc(sizeof(struct Background_p));
 
     process->pid = pid;
 
-    process->arguments = arguments;
+    process->command = command_copy;
 
     // Attaching head to incoming process
     process->next_process = (*head_process);
@@ -62,14 +62,14 @@ void wait_for_background_processes(struct Background_p **head_process)
             if (curr_process == *head_process)
             {
                 *head_process = curr_process->next_process;
-                print_status(status, curr_process->arguments);
+                print_status(status, curr_process->command);
                 free(curr_process);
                 curr_process = *head_process;
             }
             else
             {
                 prev_process->next_process = curr_process->next_process;
-                print_status(status, curr_process->arguments);
+                print_status(status, curr_process->command);
                 free(curr_process);
             }
         }
@@ -137,7 +137,7 @@ void redirection(char *args[], char *cwd)
                 fd = open(absolute_path_to_file, O_TRUNC | O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR);
                 if (fd < 0)
                 {
-                    perror("Noe gikk galt kan ikke aapne fil");
+                    perror("Something went wrong, cannot open file");
                 }
                 dup2(fd, 1);
                 close(fd);
@@ -158,7 +158,7 @@ void redirection(char *args[], char *cwd)
     }
     if (redirect)
     {
-        for (int j = command_ends; j < MAX_STRING_LEN; j++)
+        for (int j = command_ends; j < MAX_ARGS; j++)
         {
             args[j] = '\0';
         }
@@ -168,7 +168,7 @@ void redirection(char *args[], char *cwd)
 // Checks if process is background process
 int is_background_process(char *args[])
 {
-    for (int i = 0; i < MAX_STRING_LEN; i++)
+    for (int i = 0; i < MAX_ARGS; i++)
     {
         if (args[i] == NULL)
         {
@@ -192,7 +192,7 @@ void print_processes(struct Background_p *process)
     while (process != NULL)
     {
         printf("PID: %d, Command: [", process->pid);
-        printf("%s", process->arguments);
+        printf("%s", process->command);
         printf("]\n");
         process = process->next_process;
     }
@@ -238,7 +238,7 @@ int flush()
         wait_for_background_processes(&head);
         prompt_user(cwd, input);
         strcpy(command, input);
-        char *args[MAX_STRING_LEN];
+        char *args[MAX_ARGS];
         split_string(input, args, cwd);
         background_process = is_background_process(args);
 
