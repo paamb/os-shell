@@ -22,41 +22,26 @@ struct Background_p
 
 void push_process(struct Background_p **head_process, pid_t pid, char *command)
 {
-    // printf("%s\n", input);
     char *arguments = malloc(MAX_SIZE);
     strcpy(arguments, command);
-    // *arguments = *input;
     // Bygger opp foran og går bakover
     struct Background_p *process = (struct Background_p *)malloc(sizeof(struct Background_p));
 
     process->pid = pid;
+
     process->arguments = arguments;
     // Peker på NULL ved start
     process->next_process = (*head_process);
-
-    // for (int i = 0; i < MAX_STRING_LEN; i++)
-    // {
-    //     if (args[i] == NULL)
-    //     {
-    //         break;
-    //     }
-    //     process->args[i] = *args[i];
-    // }
     // Head blir nå
     (*head_process) = process;
 }
 
-void print_status(int status, int background_p)
+void print_status(int status, char *command)
 {
-    printf("Parent: %d \n", getpid());
     if (WIFEXITED(status))
     {
         int exit_status = WEXITSTATUS(status);
-        if (background_p)
-        {
-            printf("Background Process: ");
-        }
-        printf("Exit status = %d \n", exit_status);
+        printf("Exit status [%s] = %d \n", command, exit_status);
     }
 }
 
@@ -73,16 +58,14 @@ void wait_for_background_processes(struct Background_p **head_process)
             if (curr_process == *head_process)
             {
                 *head_process = curr_process->next_process;
-                printf("FREE: %d\n", curr_process->pid);
-                print_status(status, 1);
+                print_status(status, curr_process->arguments);
                 free(curr_process);
                 curr_process = *head_process;
             }
             else
             {
-                printf("Kommer vi hit? \n");
                 prev_process->next_process = curr_process->next_process;
-                printf("FREE: %d\n", curr_process->pid);
+                print_status(status, curr_process->arguments);
                 free(curr_process);
             }
         }
@@ -149,13 +132,12 @@ void redirection(char *args[], char *cwd)
             }
             if (strcmp(args[i], ">") == 0)
             {
-                fd = open(absolute_path_to_file, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
+                // | S_IWUSR
+                fd = open(absolute_path_to_file, O_RDWR | O_CREAT, S_IRUSR);
                 if (fd < 0)
                 {
                     perror("Noe gikk galt kan ikke aapne fil");
                 }
-                printf("%d\n", fd);
-
                 // fd er naa output
                 dup2(fd, 1);
                 close(fd);
@@ -253,6 +235,7 @@ int flush()
     {
         background_process = 0;
         set_cwd(cwd);
+        wait_for_background_processes(&head);
         prompt_user(cwd, input);
         strcpy(command, input);
         char *args[MAX_STRING_LEN];
@@ -270,7 +253,7 @@ int flush()
             {
                 print_processes(head);
             }
-            // sleep(4);
+            sleep(4);
             redirection(args, cwd);
             execvp(args[0], args);
             // Man kommer bare hit om execvp failer
@@ -278,19 +261,21 @@ int flush()
         }
 
         // parent waiting for child
-        else
+        else if (pid < 0)
+        {
+            printf("Error while creating child");
+        }
         {
             // TODO: Fix head
             if (!background_process)
             {
                 waitpid(pid, &status, 0);
-                print_status(status, 0);
+                print_status(status, command);
             }
             else
             {
                 push_process(&head, pid, command);
             }
         }
-        wait_for_background_processes(&head);
     }
 }
