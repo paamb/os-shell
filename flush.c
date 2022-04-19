@@ -24,18 +24,21 @@ void push_process(struct Background_p **head_process, pid_t pid, char *command)
 {
     char *arguments = malloc(MAX_SIZE);
     strcpy(arguments, command);
-    // Bygger opp foran og går bakover
+
+    // Mallocing the process
     struct Background_p *process = (struct Background_p *)malloc(sizeof(struct Background_p));
 
     process->pid = pid;
 
     process->arguments = arguments;
-    // Peker på NULL ved start
+
+    // Attaching head to incoming process
     process->next_process = (*head_process);
-    // Head blir nå
+    // Head is now incoming process
     (*head_process) = process;
 }
 
+// Printing the status when exiting
 void print_status(int status, char *command)
 {
     if (WIFEXITED(status))
@@ -45,6 +48,7 @@ void print_status(int status, char *command)
     }
 }
 
+// Waits for background processes with WNOHANG. Removes from linked list if process is finished.
 void wait_for_background_processes(struct Background_p **head_process)
 {
     int status;
@@ -93,7 +97,6 @@ void set_cwd(char *cwd)
 
 void prompt_user(char *cwd, char *input)
 {
-    // bzero((char *)input, MAX_SIZE);
     printf("%s: ", cwd);
 
     if (fgets(input, MAX_SIZE, stdin) == NULL)
@@ -101,14 +104,13 @@ void prompt_user(char *cwd, char *input)
         printf("\n");
         exit(0);
     }
-    // Remove newline character from input
-
     if (input[0] != '\n')
     {
         input[strcspn(input, "\n")] = 0;
     }
 }
 
+// Enables redirection for child process
 void redirection(char *args[], char *cwd)
 {
     int fd;
@@ -132,20 +134,16 @@ void redirection(char *args[], char *cwd)
             }
             if (strcmp(args[i], ">") == 0)
             {
-                // | S_IWUSR
-                // O_RDWR | O_CREAT, S_IRUSR
-                fd = open(absolute_path_to_file, O_WRONLY | O_TRUNC | O_CREAT, S_IRUSR);
+                fd = open(absolute_path_to_file, O_TRUNC | O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR);
                 if (fd < 0)
                 {
                     perror("Noe gikk galt kan ikke aapne fil");
                 }
-                // fd er naa output
                 dup2(fd, 1);
                 close(fd);
             }
             if (strcmp(args[i], "<") == 0)
             {
-                // Tatt fra stackoverflow
                 fd = open(absolute_path_to_file, O_RDONLY);
                 if (fd < 0)
                 {
@@ -158,7 +156,6 @@ void redirection(char *args[], char *cwd)
         }
         i++;
     }
-    // Slicer slik at man faar inn riktig argumenter i execvp
     if (redirect)
     {
         for (int j = command_ends; j < MAX_STRING_LEN; j++)
@@ -168,6 +165,7 @@ void redirection(char *args[], char *cwd)
     }
 }
 
+// Checks if process is background process
 int is_background_process(char *args[])
 {
     for (int i = 0; i < MAX_STRING_LEN; i++)
@@ -185,6 +183,7 @@ int is_background_process(char *args[])
     return 0;
 }
 
+// Called when 'jobs' is put in command line. Prints background processes
 void print_processes(struct Background_p *process)
 {
     printf("\nRunning processes\n");
@@ -242,31 +241,28 @@ int flush()
         char *args[MAX_STRING_LEN];
         split_string(input, args, cwd);
         background_process = is_background_process(args);
-        // printf("I flush: %s\n", input);
 
         int pid = fork();
 
         // child
         if (pid == 0)
         {
-            // dup2(p[1], 1);
             if (strcmp(args[0], "jobs") == 0)
             {
                 print_processes(head);
             }
             redirection(args, cwd);
             execvp(args[0], args);
-            // Man kommer bare hit om execvp failer
             exit(0);
         }
 
-        // parent waiting for child
         else if (pid < 0)
         {
             printf("Error while creating child");
         }
+
+        else
         {
-            // TODO: Fix head
             if (!background_process)
             {
                 waitpid(pid, &status, 0);
