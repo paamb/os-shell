@@ -39,12 +39,15 @@ void push_process(struct Background_p **head_process, pid_t pid)
     // }
 }
 
-void print_status(int status)
+void print_status(int status, int background_p)
 {
     printf("Parent: %d \n", getpid());
     if (WIFEXITED(status))
     {
         int exit_status = WEXITSTATUS(status);
+        if (background_p){
+            printf("Background Process: ");
+        }
         printf("Exit status = %d \n", exit_status);
     }
 }
@@ -55,55 +58,32 @@ void wait_for_background_processes(struct Background_p **head_process)
     struct Background_p *curr_process = *head_process;
     struct Background_p *prev_process;
 
-    //     if (waitpid(curr_process->pid, &status, WNOHANG) != 0)
-    //     {
-    //         if (WIFEXITED(status))
-    //         {
-    //             int exit_status = WEXITSTATUS(status);
-    //             printf("Exit status = %d \n", exit_status);
-    //         }
-    // int iiid = curr_process->pid;
-    // printf("head process %d \n", iiid);
-    // if (*head_process == NULL)
-    // {
-    //     printf("hefdsi\n");
-    // }
-    // (waitpid((*head_process)->pid, &status, WNOHANG) != 0)
-    if (curr_process != NULL)
+    if (curr_process != NULL && curr_process->pid > 0)
     {
-        // int a = waitpid((*head_process)->pid, &status, WNOHANG);
         if (waitpid(curr_process->pid, &status, WNOHANG) != 0)
         {
             *head_process = curr_process->next_process;
-            print_status(status);
-            printf("Prosess som er ferdig %d\n", curr_process->pid);
+            print_status(status, 1);
+            printf("FREE: %d\n", curr_process->pid);
             free(curr_process);
         }
-        // print_status(status);
     }
-    //  && curr_process->pid != remove_pid
-    while (curr_process != NULL && curr_process->pid != 0)
+    while (curr_process != NULL && curr_process->pid > 0)
     {
         if (waitpid(curr_process->pid, &status, WNOHANG) != 0)
         {
+            *head_process = curr_process->next_process;
             prev_process->next_process = curr_process->next_process;
-            print_status(status);
-            printf("Prosess som er ferdig2 %d\n", curr_process->pid);
+            print_status(status,1);
+            printf("FREE: %d\n", curr_process->pid);
             free(curr_process);
         }
         else
         {
             prev_process = curr_process;
             curr_process = curr_process->next_process;
-            // printf("%d\n", curr_process->);
         }
     }
-    // if (curr_process == NULL)
-    // {
-    //     return;
-    // }
-    // prev_process->next_process = curr_process->next_process;
-    // free(curr_process);
 }
 
 void set_cwd(char *cwd)
@@ -113,7 +93,6 @@ void set_cwd(char *cwd)
     if (getcwd(cwd_array, sizeof(cwd_array)) != NULL)
     {
         strcpy(cwd, cwd_array);
-        // printf("%s \n", cwd);
     }
     else
     {
@@ -220,10 +199,6 @@ void print_processes(struct Background_p *process)
     while (process != NULL)
     {
         printf("%d\n", process->pid);
-        // if (process->next_process != NULL)
-        // {
-        //     printf("%d\n", process->next_process->pid);
-        // }
         process = process->next_process;
     }
 }
@@ -290,7 +265,7 @@ int flush()
         // child
         if (pid == 0)
         {
-            sleep(2);
+            sleep(5);
             redirection(args, cwd);
             execvp(args[0], args);
             // Man kommer bare hit om execvp failer
@@ -304,15 +279,15 @@ int flush()
             if (!background_process)
             {
                 waitpid(pid, &status, 0);
-                print_status(status);
+                print_status(status, 0);
             }
             else
             {
                 push_process(&head, pid);
                 printf("execes\n");
-                wait_for_background_processes(&head);
             }
         }
+        wait_for_background_processes(&head);
         // while (head != NULL)
         // {
         //     if (waitpid(curr_process->pid, &status, WNOHANG) != 0)
